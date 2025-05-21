@@ -1,0 +1,2 @@
+# npcortex
+AI backend
