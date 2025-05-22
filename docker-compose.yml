@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   ollama:
     image: ollama/ollama
@@ -10,6 +8,9 @@ services:
     ports:
       - "11434:11434"
     restart: unless-stopped
+    environment:
+      - OLLAMA_MODEL
+      - OLLAMA_EMBED_MODEL
 
   f5tts:
     build:
@@ -30,17 +31,59 @@ services:
       - ollama
     restart: unless-stopped
 
-  qdrant:
-    image: qdrant/qdrant
-    container_name: qdrant
+  chromadb:
+    image: chromadb/chroma:0.6.3
+    container_name: chromadb
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "8001:8000"
     volumes:
-      - qdrant_storage:/qdrant/storage
+      - chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=TRUE
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Console UI
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER
+      - MINIO_ROOT_PASSWORD
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+  fastapi:
+    build:
+      context: ./rest-api
+      dockerfile: Dockerfile
+    image: my-fastapi:latest
+    container_name: fastapi
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL
+      - OLLAMA_EMBED_MODEL
+      - CHROMA_SERVER_HOST=chromadb
+      - CHROMA_SERVER_PORT=8000
+      - TTS_HOST=f5tts
+      - TTS_PORT=7860
+      - MINIO_ACCESS_KEY
+      - MINIO_SECRET_KEY
+    ports:
+      - "8000:80"
+    depends_on:
+      - ollama
+      - f5tts
+      - chromadb
+      - minio
     restart: unless-stopped
 
 volumes:
   ollama:
   f5-tts:
-  qdrant_storage:
+  chroma_data:
+  minio_data:
