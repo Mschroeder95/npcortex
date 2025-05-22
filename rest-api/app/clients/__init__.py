@@ -17,7 +17,8 @@ chroma_client = chromadb.HttpClient(
 
 ollama_client = ollama.Client(host=OLLAMA_URL)
 
-minio_client = Minio("play.min.io",
+minio_client = Minio(os.getenv('MINIO_HOST'),
     access_key=os.getenv('MINIO_ACCESS_KEY'),
     secret_key=os.getenv('MINIO_SECRET_KEY'),
+    secure=False
 )
