@@ -6,12 +6,14 @@ from pydantic import BaseModel, Field
 from config import OLLAMA_EMBED_MODEL
 from clients import ollama_client, chroma_client
 from constants import LOW_LEVEL_TAG
+import re
 
 router = APIRouter(tags=[LOW_LEVEL_TAG])
 
 
 class EmbedResponse(BaseModel):
-    ids: list[str] = Form(..., description="IDs of the embeddings.")
+    collection_name: str
+    ids: list[str]
 
 
 class EmbedRequest(BaseModel):
@@ -19,7 +21,7 @@ class EmbedRequest(BaseModel):
         ..., description="The collection to embed context into"
     )
     text: str = Field(..., description="The text to embed")
-    metadatas: Optional[list[dict[str, str]]] = Field( None,
+    metadatas: Optional[list[Metadata]] = Field( None,
         description="Matadata for future query filtering."
     )
 
@@ -29,7 +31,8 @@ class EmbedRequest(BaseModel):
     summary="Embed text into the RAG system",
     description="Low level interface for embedding text into the RAG.",
 )
-def post_embed(req: EmbedRequest):
+async def post_embed(req: EmbedRequest):
+    collection_name = make_chroma_safe_name(req.collection_name)
     try:
         resp = ollama_client.embed(model=OLLAMA_EMBED_MODEL, input=req.text)
         embeddings = resp["embeddings"]
@@ -39,10 +42,10 @@ def post_embed(req: EmbedRequest):
         )
 
     try:
-        coll = chroma_client.get_collection(name=req.collection_name)
+        coll = chroma_client.get_collection(name=collection_name)
     except Exception:
-        chroma_client.create_collection(name=req.collection_name)
-        coll = chroma_client.get_collection(name=req.collection_name)
+        chroma_client.create_collection(name=collection_name)
+        coll = chroma_client.get_collection(name=collection_name)
 
     new_id = str(uuid.uuid4())
 
@@ -62,4 +65,17 @@ def post_embed(req: EmbedRequest):
             status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Chroma add failed: {e}"
         )
 
-    return EmbedResponse(ids=[new_id])
+    return EmbedResponse(ids=[new_id], collection_name=collection_name)
+
+
+
+def make_chroma_safe_name(raw_name: str, max_length: int = 64) -> str:
+    name = raw_name.lower()
+
+    name = name.replace('_', '')
+
+    name = re.sub(r'[^a-z0-9_-]', '-', name)
+
+    name = re.sub(r'_+', '-', name).strip('-')
+
+    return name[:max_length]

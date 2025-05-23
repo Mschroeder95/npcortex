@@ -11,7 +11,7 @@ router = APIRouter(tags=[LOW_LEVEL_TAG])
     summary="Upload a file to the system",
     description="Low level interface for saving files",
 )
-async def save_to_minio(
+async def store_file(
     bucket_name: str = Form(..., description="Name of the bucket"),
     path: str = Form(..., description="Object key (path) in the bucket"),
     file: UploadFile = File(..., description="The file to save"),
