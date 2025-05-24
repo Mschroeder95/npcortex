@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
 
   chromadb:
-    image: chromadb/chroma:0.6.3
+    image: chromadb/chroma:1.0.10
     container_name: chromadb
     ports:
       - "8001:8000"

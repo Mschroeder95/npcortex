@@ -6,32 +6,33 @@ from pydantic import BaseModel, Field
 from config import OLLAMA_EMBED_MODEL
 from clients import ollama_client, chroma_client
 from constants import LOW_LEVEL_TAG
-import re
+from clients.chromadb_helpers import make_chroma_safe_name
 
 router = APIRouter(tags=[LOW_LEVEL_TAG])
 
 
 class EmbedResponse(BaseModel):
     collection_name: str
-    ids: list[str]
+    id: str
 
 
 class EmbedRequest(BaseModel):
+    id: str = Field(None, description="Optional ID for the new embedding")
     collection_name: str = Field(
         ..., description="The collection to embed context into"
     )
     text: str = Field(..., description="The text to embed")
-    metadatas: Optional[list[Metadata]] = Field( None,
-        description="Matadata for future query filtering."
+    metadata: Optional[Metadata] = Field(
+        None, description="Matadata for future query filtering."
     )
 
 
 @router.post(
-    "/embed",
+    "/embed-single",
     summary="Embed text into the RAG system",
     description="Low level interface for embedding text into the RAG.",
 )
-async def post_embed(req: EmbedRequest):
+async def post_embed_single(req: EmbedRequest):
     collection_name = make_chroma_safe_name(req.collection_name)
     try:
         resp = ollama_client.embed(model=OLLAMA_EMBED_MODEL, input=req.text)
@@ -47,15 +48,19 @@ async def post_embed(req: EmbedRequest):
         chroma_client.create_collection(name=collection_name)
         coll = chroma_client.get_collection(name=collection_name)
 
-    new_id = str(uuid.uuid4())
-
-    if req.metadatas is not None and len(req.metadatas) == 0 :
+    if req.metadata is not None:
         instert_metadatas = None
     else:
-        instert_metadatas = req.metadatas
+        instert_metadatas = [req.metadatas]
+
+    if req.id is not None:
+        insert_ids = [make_chroma_safe_name(req.id)]
+    else:
+        insert_ids = [str(uuid.uuid4())]
+
     try:
         coll.add(
-            ids=[new_id],
+            ids=insert_ids,
             embeddings=embeddings,
             documents=[req.text],
             metadatas=instert_metadatas,
@@ -65,17 +70,6 @@ async def post_embed(req: EmbedRequest):
             status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Chroma add failed: {e}"
         )
 
-    return EmbedResponse(ids=[new_id], collection_name=collection_name)
+    return EmbedResponse(id=insert_ids[0], collection_name=collection_name)
 
 
-
-def make_chroma_safe_name(raw_name: str, max_length: int = 64) -> str:
-    name = raw_name.lower()
-
-    name = name.replace('_', '')
-
-    name = re.sub(r'[^a-z0-9_-]', '-', name)
-
-    name = re.sub(r'_+', '-', name).strip('-')
-
-    return name[:max_length]

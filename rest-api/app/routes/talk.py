@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field
 from config import OLLAMA_MODEL, OLLAMA_EMBED_MODEL
 from clients import ollama_client, chroma_client
 from constants import HIGH_LEVEL_TAG
-from .embed import make_chroma_safe_name
+from clients.chromadb_helpers import make_chroma_safe_name
+
 
 router = APIRouter(tags=[HIGH_LEVEL_TAG])
 
@@ -48,6 +49,9 @@ def post_talk(req: TalkRequest):
     # TODO: Add long term memory NPC specific
 
     # TODO: add short term/chat memory for NPC
+
+    # TODO: is converstation about metadata tag like an npc, loction, etc. -> go grab that context
+    
 
     print(general_data)
     print(npc_object)

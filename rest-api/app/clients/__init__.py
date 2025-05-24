@@ -1,3 +1,4 @@
+
 import os
 from config import CHROMA_HOST, CHROMA_PORT, OLLAMA_URL
 import chromadb
@@ -22,3 +23,4 @@ minio_client = Minio(os.getenv('MINIO_HOST'),
     secret_key=os.getenv('MINIO_SECRET_KEY'),
     secure=False
 )
+
