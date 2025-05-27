@@ -44,12 +44,13 @@ async def save_file(
 #     response = minio_client.get_object(bucket_name=bucket_name, object_name=object_name)
 #     if response.status == status.HTTP_404_NOT_FOUND:
 #         response.
-# def create_bucket_if_does_not_exist(bucket_name: str):
-#     try:
-#         if not minio_client.bucket_exists(bucket_name):
-#             minio_client.make_bucket(bucket_name)
-#     except Exception as e:
-#         raise HTTPException(
-#             status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=f"Could not create/access bucket `{bucket_name}`: {e}",
-#         )
+
+def create_bucket_if_does_not_exist(bucket_name: str):
+    try:
+        if not minio_client.bucket_exists(bucket_name):
+            minio_client.make_bucket(bucket_name)
+    except Exception as e:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not create/access bucket `{bucket_name}`: {e}",
+        )
