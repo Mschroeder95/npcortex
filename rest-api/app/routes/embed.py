@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from config import OLLAMA_EMBED_MODEL
 from clients import ollama_client, chroma_client
 from constants import LOW_LEVEL_TAG
-from clients.chromadb_helpers import make_chroma_safe_name
+from util.helper_functions import safe_string
 
 router = APIRouter(tags=[LOW_LEVEL_TAG])
 
@@ -33,7 +33,7 @@ class EmbedRequest(BaseModel):
     description="Low level interface for embedding text into the RAG.",
 )
 async def post_embed_single(req: EmbedRequest):
-    collection_name = make_chroma_safe_name(req.collection_name)
+    collection_name = safe_string(req.collection_name)
     try:
         resp = ollama_client.embed(model=OLLAMA_EMBED_MODEL, input=req.text)
         embeddings = resp["embeddings"]
@@ -49,12 +49,12 @@ async def post_embed_single(req: EmbedRequest):
         coll = chroma_client.get_collection(name=collection_name)
 
     if req.metadata is not None:
-        instert_metadatas = None
+        instert_metadatas = [req.metadata]
     else:
-        instert_metadatas = [req.metadatas]
+        instert_metadatas = None
 
     if req.id is not None:
-        insert_ids = [make_chroma_safe_name(req.id)]
+        insert_ids = [safe_string(req.id)]
     else:
         insert_ids = [str(uuid.uuid4())]
 

@@ -55,7 +55,7 @@ class GenerateAndCreateRequest(BaseModel):
 @router.post(
     '/generate-and-create-all',
     summary='Generate and create all game objects',
-    description='Generates game objects from the prompt and creates them in the RAG database'
+    description='Generates game objects from the prompt and creates them in the RAG database. This Endpoint can take a long time becuase it creates many game objects.'
 )
 async def generate_and_create_all(
         req: GenerateAndCreateRequest = Depends()

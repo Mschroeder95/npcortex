@@ -2,11 +2,12 @@ import json
 from typing import List, Optional
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
-from constants import HIGH_LEVEL_TAG, GAME_DATA, GAME_NAME
+from constants import HIGH_LEVEL_TAG, GAME_DATA
 from clients import ollama_client, chroma_client
 from config import OLLAMA_MODEL
 from .embed import post_embed_single, EmbedRequest
-from clients.chromadb_helpers import make_chroma_safe_name, get_chroma_document_by_id
+from clients.chromadb_helpers import get_chroma_document_by_id
+from util.helper_functions import safe_string
 
 router = APIRouter(tags=[HIGH_LEVEL_TAG])
 
@@ -14,7 +15,7 @@ router = APIRouter(tags=[HIGH_LEVEL_TAG])
 class Game(BaseModel):
     game_name: str = Field(..., description="Title of the game world")
     plot: str = Field(..., description="Short synopsis of the main storyline")
-    win_condition: str = Field(
+    how_does_player_win: str = Field(
         ..., description="What it takes for the player(s) to win"
     )
     extra_contexts: list[str] = Field(
@@ -38,14 +39,14 @@ class GameResponse(Game):
     summary="Creates a game and it's necessary files",
 )
 async def post_game(req: Game):
-    text = json.dumps(req.model_dump())
-    safe_name = make_chroma_safe_name(req.game_name)
+    text = req.model_dump_json()
+    safe_name = safe_string(req.game_name)
     embed_response = await post_embed_single(
         EmbedRequest(
             id=safe_name,
             collection_name=safe_name,
             text=text,
-            metadata={GAME_DATA: safe_name, GAME_NAME: req.game_name},
+            metadata={GAME_DATA: safe_name},
         )
     )
 

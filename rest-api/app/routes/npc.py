@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 
 from constants import HIGH_LEVEL_TAG, NPC_DATA, NPC_NAME
 from .embed import post_embed_single, EmbedRequest, EmbedResponse
-from .file import store_file
 from clients.chromadb_helpers import get_chroma_document_by_id
 
 router = APIRouter(tags=[HIGH_LEVEL_TAG])

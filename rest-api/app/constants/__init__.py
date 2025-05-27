@@ -6,4 +6,4 @@ LOW_LEVEL_TAG = "Low Level"
 NPC_DATA = 'npc_data'
 NPC_NAME = 'npc_name'
 GAME_DATA = 'game_data'
-GAME_NAME = 'game_name'
+CHAT_HISTORY = 'chat_history'
