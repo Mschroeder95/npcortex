@@ -1,12 +1,12 @@
 from typing import Optional
 import uuid
 from chromadb import Metadata
-from fastapi import APIRouter, Form, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from config import OLLAMA_EMBED_MODEL
 from clients import ollama_client, chroma_client
 from constants import LOW_LEVEL_TAG
-from util.helper_functions import safe_string
+from util import safe_string
 
 router = APIRouter(tags=[LOW_LEVEL_TAG])
 
@@ -59,7 +59,7 @@ async def post_embed_single(req: EmbedRequest):
         insert_ids = [str(uuid.uuid4())]
 
     try:
-        coll.add(
+        coll.upsert(
             ids=insert_ids,
             embeddings=embeddings,
             documents=[req.text],

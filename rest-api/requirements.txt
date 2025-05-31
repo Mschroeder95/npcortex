@@ -4,3 +4,4 @@ ollama
 chromadb==1.0.10
 minio
 python-multipart
+gradio_client

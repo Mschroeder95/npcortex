@@ -1,25 +1,33 @@
-import json
-from typing import List, Optional
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 from constants import HIGH_LEVEL_TAG, GAME_DATA
-from clients import ollama_client, chroma_client
-from config import OLLAMA_MODEL
+from clients import chroma_client
 from .embed import post_embed_single, EmbedRequest
 from clients.chromadb_helpers import get_chroma_document_by_id
-from util.helper_functions import safe_string
+from util import safe_string
 
 router = APIRouter(tags=[HIGH_LEVEL_TAG])
 
 
 class Game(BaseModel):
+    """
+    Represents the overall game world and its high-level story framing.
+    """
+
     game_name: str = Field(..., description="Title of the game world")
-    plot: str = Field(..., description="Short synopsis of the main storyline")
-    how_does_player_win: str = Field(
-        ..., description="What it takes for the player(s) to win"
+    synopsis: str = Field(
+        ..., description="A one-paragraph overview of the story’s setup and stakes"
+    )
+    win_condition: str = Field(
+        ..., description="What players must accomplish in order to win"
     )
     extra_contexts: list[str] = Field(
-        ..., description="Extra context attached to game object"
+        default_factory=list,
+        description="Additional world-building details or flavor text",
+    )
+    all_npc_names: list[str] = Field(
+        default_factory=list,
+        description="List of all NPC names that exist in this game",
     )
 
 
@@ -57,6 +65,13 @@ async def post_game(req: Game):
     )
 
 
+@router.get("/game", summary="Retrieve game data from the system")
+async def get_game(
+    game_name: str = Query(..., description="The name of the Game")
+) -> Game:
+    return Game(**get_chroma_document_by_id(game_name, game_name))
+
+
 @router.get("/games", summary="Retrieve all games from the system")
 async def get_games():
     games = []
@@ -65,15 +80,3 @@ async def get_games():
         games.append(document)
 
     return {"games": games}
-
-
-@router.get('/game',
-            summary='Retrieve game data from the system')
-async def get_game(game_name: str = Query(..., description="The name of the Game")):
-    return get_chroma_document_by_id(game_name, game_name)
-
-
-
-@router.post("/add-npc-to-game")
-def add_npc_to_game():
-    pass

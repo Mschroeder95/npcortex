@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+from math import floor
+from typing import Literal, Optional, Type
 from ollama import GenerateResponse, Options
 from pydantic import BaseModel, Field
 from constants import HIGH_LEVEL_TAG
@@ -10,6 +11,8 @@ import yaml
 from clients.chromadb_helpers import get_chroma_document_by_id
 from .game import post_game, Game
 from .npc import post_npc, NpcRequest, Npc
+import random
+
 
 router = APIRouter(tags=[HIGH_LEVEL_TAG])
 
@@ -31,18 +34,29 @@ async def generate(req: GenerateRequest = Depends()):
             model_class = Npc
 
     if req.using_game is not None:
-        game_data = get_chroma_document_by_id(req.using_game, req.using_game)
+        game_data =  Game(**get_chroma_document_by_id(req.using_game, req.using_game))
         game_prompt = f'Use this game as inspiration:\n{yaml.dump(game_data)}'
     else:
         game_prompt = ''
+
+    if model_class is Npc:
+        personality_traits = """personality should include some of the following:
+confident, anxious, curious, cynical, empathetic, 
+impulsive,stoic, charming, paranoid, optimistic, pessimistic, independent,
+loyal, manipulative, honest, ambitious, reckless, cautious, sarcastic, altruistic
+    """
+    else:
+        personality_traits = ""
+
     format_prompt = model_format_prompt(model_class)
     full_prompt = f"""
-    Using this description of the response format, all fields are required:
+    Generate a new {req.option} with new names using the following prompt for inspiration:
+    {personality_traits}
     {format_prompt}
     {game_prompt}
-    Generate a new {req.option} with new names using the following prompt for inspiration:
     {req.prompt}
     """
+    print("format prompt")
     print(format_prompt)
     output: GenerateResponse = ollama_client.generate(
         model=OLLAMA_MODEL, prompt=full_prompt, format=model_class.model_json_schema(),options=Options(temperature=float(req.randomness))
@@ -64,8 +78,8 @@ async def generate_and_create_all(
     game = Game(**game)
     await post_game(game)
     npcs = []
-    for i in range(5):
-        npc = await generate(GenerateRequest(prompt=f'(Make an npc based on this prompt: {req.prompt}) (existing npcs: {yaml.dump(npcs)})', option='NPC', using_game=game.game_name, randomness='1'))
+    for npc_name in game.all_npc_names:
+        npc = await generate(GenerateRequest(prompt=f'The npc_name is {npc_name}. Ensure their name is {npc_name}', option='NPC', using_game=game.game_name, randomness='1'))
         npc = Npc(**npc)
         print(npc)
         await post_npc(NpcRequest(npc=npc, game_name=game.game_name))
@@ -78,7 +92,6 @@ async def generate_and_create_all(
     }
 
 
-def model_format_prompt(model_class):
-    prompt = f"Fields and descriptions for response format: {model_class.__name__}"
-    for field_name, field in model_class.model_fields.items():
-        prompt += f"(field={field_name}, description={field.description})"
+def model_format_prompt(model_class: Type[BaseModel]) -> str:
+    schema = model_class.model_json_schema()
+    return "Follow this JSON Schema exactly:\n" + json.dumps(schema, indent=2)
